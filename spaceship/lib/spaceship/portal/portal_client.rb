@@ -144,7 +144,7 @@ module Spaceship
       latinized
     end
 
-    def create_app!(type, name, bundle_id, mac: false, enabled_features: {})
+    def create_app!(type, name, bundle_id, mac: false, enable_services: {})
       # We moved the ensure_csrf to the top of this method
       # as we got some users with issues around creating new apps
       # https://github.com/fastlane/fastlane/issues/5813
@@ -171,7 +171,7 @@ module Spaceship
         teamId: team_id
       }
       params.merge!(ident_params)
-      enabled_features.each do |k, v|
+      enable_services.each do |k, v|
         params[v.service_id.to_sym] = v.value
       end
       r = request(:post, "account/#{platform_slug(mac)}/identifiers/addAppId.action", params)
@@ -558,6 +558,54 @@ module Spaceship
       r = request(:post, "account/#{platform_slug(mac)}/profile/regenProvisioningProfile.action", params)
 
       parse_response(r, 'provisioningProfile')
+    end
+
+    #####################################################
+    # @!group Keys
+    #####################################################
+
+    def list_keys
+      paging do |page_number|
+        response = request(:post, 'account/auth/key/list', {
+          teamId: team_id,
+          pageNumber: page_number,
+          pageSize: page_size,
+          sort: 'name=asc'
+        })
+        parse_response(response, 'keys')
+      end
+    end
+
+    def get_key(id: nil)
+      response = request(:post, 'account/auth/key/get', { teamId: team_id, keyId: id })
+      # response contains a list of keys with 1 item
+      parse_response(response, 'keys').first
+    end
+
+    def download_key(id: nil)
+      response = request(:get, 'account/auth/key/download', { teamId: team_id, keyId: id })
+      parse_response(response)
+    end
+
+    def create_key!(name: nil, service_configs: nil)
+      params = {
+        name: name,
+        serviceConfigurations: service_configs,
+        teamId: team_id
+      }
+
+      response = request(:post, 'account/auth/key/create') do |req|
+        req.headers['Content-Type'] = 'application/json'
+        req.body = params.to_json
+      end
+
+      # response contains a list of keys with 1 item
+      parse_response(response, 'keys').first
+    end
+
+    def revoke_key!(id: nil)
+      response = request(:post, 'account/auth/key/revoke', { teamId: team_id, keyId: id })
+      parse_response(response)
     end
 
     private

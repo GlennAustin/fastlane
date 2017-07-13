@@ -2,9 +2,14 @@ require 'pty'
 require 'open3'
 require 'fileutils'
 require 'terminal-table'
+require 'shellwords'
 
 module Scan
   class Runner
+    def initialize
+      @test_command_generator = TestCommandGenerator.new
+    end
+
     def run
       handle_results(test_app)
     end
@@ -16,7 +21,7 @@ module Scan
       # This way it's okay to just call it for the first simulator we're using for
       # the first test run
       open_simulator_for_device(Scan.devices.first) if Scan.devices
-      command = TestCommandGenerator.generate
+      command = @test_command_generator.generate
       prefix_hash = [
         {
           prefix: "Running Tests: ",
@@ -80,7 +85,17 @@ module Scan
     end
 
     def test_results
-      return "" unless Scan.cache[:temp_junit_report]
+      temp_junit_report = Scan.cache[:temp_junit_report]
+      return File.read(temp_junit_report) if temp_junit_report && File.file?(temp_junit_report)
+
+      # Something went wrong with the temp junit report for the test success/failures count.
+      # We'll have to regenerate from the xcodebuild log, like we did before version 2.34.0.
+      UI.message("Generating test results. This may take a while for large projects.")
+
+      reporter_options_generator = XCPrettyReporterOptionsGenerator.new(false, [], [], "", false)
+      reporter_options = reporter_options_generator.generate_reporter_options
+      cmd = "cat #{@test_command_generator.xcodebuild_log_path.shellescape} | xcpretty #{reporter_options.join(' ')} &> /dev/null"
+      system(cmd)
       File.read(Scan.cache[:temp_junit_report])
     end
 

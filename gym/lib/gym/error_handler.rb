@@ -51,10 +51,10 @@ module Gym
           print "For more information visit this stackoverflow answer:"
           print "https://stackoverflow.com/a/17031697/445598"
         end
-        print_full_log_path
         print_xcode_path_instructions
         print_xcode_version
-        raise_legacy_build_api_error(output) if Gym.config[:use_legacy_build_api]
+        print_full_log_path
+        print_build_error_instructions
         UI.build_failure!("Error building the application - see the log above", error_info: output)
       end
 
@@ -80,12 +80,17 @@ module Gym
           print "This means, the specified provisioning profile was not created using"
           print "the specified certificate."
           print "Run cert and sigh before gym to make sure to have all signing resources ready"
+        when /requires a provisioning profile/
+          print "No provisioning profile provided"
+          print "Make sure to pass a valid provisioning for each required target"
+          print "Check out the docs on how to fix this: https://github.com/fastlane/fastlane/tree/master/gym#export-options"
         # insert more specific code signing errors here
         when /Codesign check fails/
           print "A general code signing error occurred. Make sure you passed a valid"
           print "provisioning profile and code signing identity."
         end
         print_full_log_path
+        print_build_error_instructions
         UI.build_failure!("Error packaging up the application", error_info: output)
       end
 
@@ -99,26 +104,7 @@ module Gym
         UI.build_failure!("Archive invalid")
       end
 
-      def find_standard_output_path(output)
-        m = /Created bundle at path '(.*)'/.match(output)
-        return File.join(m[1], 'IDEDistribution.standard.log') unless m.nil?
-      end
-
-      def raise_legacy_build_api_error(output)
-        UI.error("You enabled the legacy build API in _gym_")
-        UI.error("This option has been deprecated for about a year")
-        UI.error("and was removed with Xcode 8.3")
-        UI.error("Please update your Fastfile to include the export_method too")
-        UI.error("more information about how to migrate away: https://github.com/fastlane/fastlane/releases/tag/2.24.0")
-        UI.build_failure!("Build failed. Please remove the `use_legacy_build_api` option in your Fastfile and try again", error_info: output)
-      end
-
       private
-
-      def read_standard_output(output)
-        path = find_standard_output_path output
-        return File.read(path) if File.exist?(path)
-      end
 
       # Just to make things easier
       def print(text)
@@ -127,8 +113,21 @@ module Gym
 
       def print_full_log_path
         return if Gym.config[:disable_xcpretty]
+
         log_path = Gym::BuildCommandGenerator.xcodebuild_log_path
-        UI.important("📋  For a more detailed error log, check the full log at:")
+        return unless File.exist?(log_path)
+
+        # `xcodebuild` doesn't properly mark lines as failure reason or important information
+        # so we assume that the last few lines show the error message that's relevant
+        # (at least that's what was correct during testing)
+        log_content = File.read(log_path).split("\n")[-5..-1]
+        log_content.each do |row|
+          UI.command_output(row)
+        end
+
+        UI.message("")
+        UI.error("⬆️  Check out the few lines of raw `xcodebuild` output above for potential hints on how to solve this error")
+        UI.important("📋  For the complete and more detailed error log, check the full log at:")
         UI.important("📋  #{log_path}")
       end
 
@@ -154,25 +153,41 @@ module Gym
         default_xcode_path = "/Applications/"
 
         xcode_installations_in_default_path = Dir[File.join(default_xcode_path, "Xcode*.app")]
-        if xcode_installations_in_default_path.count > 1
-          UI.error "Found multiple versions of Xcode in '#{default_xcode_path}'"
-          UI.error "Make sure you selected the right version for your project"
-          UI.error "This build process was executed using '#{xcode_path}'"
-          UI.important "If you want to update your Xcode path, either"
-          UI.message ""
+        return unless xcode_installations_in_default_path.count > 1
+        UI.message ""
+        UI.important "Maybe the error shown is caused by using the wrong version of Xcode"
+        UI.important "Found multiple versions of Xcode in '#{default_xcode_path}'"
+        UI.important "Make sure you selected the right version for your project"
+        UI.important "This build process was executed using '#{xcode_path}'"
+        UI.important "If you want to update your Xcode path, either"
+        UI.message ""
 
-          UI.message "- Specify the Xcode version in your Fastfile"
-          UI.command_output "xcversion(version: \"8.1\") # Selects Xcode 8.1.0"
-          UI.message ""
+        UI.message "- Specify the Xcode version in your Fastfile"
+        UI.command_output "xcversion(version: \"8.1\") # Selects Xcode 8.1.0"
+        UI.message ""
 
-          UI.message "- Specify an absolute path to your Xcode installation in your Fastfile"
-          UI.command_output "xcode_select \"/Applications/Xcode8.app\""
-          UI.message ""
+        UI.message "- Specify an absolute path to your Xcode installation in your Fastfile"
+        UI.command_output "xcode_select \"/Applications/Xcode8.app\""
+        UI.message ""
 
-          UI.message "- Manually update the path using"
-          UI.command_output "sudo xcode-select -s /Applications/Xcode.app"
-          UI.message ""
-        end
+        UI.message "- Manually update the path using"
+        UI.command_output "sudo xcode-select -s /Applications/Xcode.app"
+        UI.message ""
+      end
+
+      # Indicate that code signing errors are not caused by fastlane
+      # and that fastlane only runs `xcodebuild` commands
+      def print_build_error_instructions
+        UI.message("")
+        UI.error("Looks like fastlane ran into a build/archive error with your project")
+        UI.error("It's hard to tell what's causing the error, so we wrote some guides on how")
+        UI.error("to troubleshoot build and signing issues: https://docs.fastlane.tools/codesigning/getting-started/")
+        UI.error("Before submitting an issue on GitHub, please follow the guide above and make")
+        UI.error("sure your project is set up correctly.")
+        UI.error("fastlane uses `xcodebuild` commands to generate your binary, you can see the")
+        UI.error("the full commands printed out in yellow in the above log.")
+        UI.error("Make sure to inspect the output above, as usually you'll find more error information there")
+        UI.message("")
       end
     end
   end

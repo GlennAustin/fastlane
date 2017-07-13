@@ -18,7 +18,8 @@
   <a href="https://github.com/fastlane/boarding">boarding</a> &bull;
   <a href="https://github.com/fastlane/fastlane/tree/master/gym">gym</a> &bull;
   <a href="https://github.com/fastlane/fastlane/tree/master/scan">scan</a> &bull;
-  <a href="https://github.com/fastlane/fastlane/tree/master/match">match</a>
+  <a href="https://github.com/fastlane/fastlane/tree/master/match">match</a> &bull;
+  <a href="https://github.com/fastlane/fastlane/tree/master/precheck">precheck</a>
 </p>
 
 -------
@@ -32,13 +33,12 @@ pem
 
 [![Twitter: @FastlaneTools](https://img.shields.io/badge/contact-@FastlaneTools-blue.svg?style=flat)](https://twitter.com/FastlaneTools)
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat)](https://github.com/fastlane/fastlane/blob/master/pem/LICENSE)
-[![Gem](https://img.shields.io/gem/v/pem.svg?style=flat)](https://rubygems.org/gems/pem)
 
 ###### Automatically generate and renew your push notification profiles
 
 Tired of manually creating and maintaining your push notification profiles for your iOS apps? Tired of generating a `pem` file for your server?
 
-`pem` does all that for, just by simply running `pem`.
+`pem` does all that for you, just by simply running `pem`.
 
 `pem` creates new .pem, .cer, and .p12 files to be uploaded to your push server if a valid push notification profile is needed. `pem` does not cover uploading the file to your server.
 
@@ -168,6 +168,7 @@ Run `fastlane pem --help` to get a list of available environment variables.
 - [`gym`](https://github.com/fastlane/fastlane/tree/master/gym): Building your iOS app has never been easier
 - [`scan`](https://github.com/fastlane/fastlane/tree/master/scan): The easiest way to run tests of your iOS and Mac app
 - [`match`](https://github.com/fastlane/fastlane/tree/master/match): Easily sync your certificates and profiles across your team using git
+- [`precheck`](https://github.com/fastlane/fastlane/tree/master/precheck): Check your app using a community driven set of App Store review rules to avoid being rejected
 
 ##### [Do you like fastlane? Be the first to know about updates and new fastlane tools](https://tinyletter.com/fastlane-tools)
 
